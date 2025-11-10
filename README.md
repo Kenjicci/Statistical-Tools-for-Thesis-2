@@ -43,10 +43,3 @@ The `main.py` script performs three independent regression analyses, one for eac
 | **Pollard's Rho (PR)** | Power Law Function (y = a · x^b) | This models the O(√p) complexity. |
 | **Elliptic Curve Method (ECM)** | Sub-exponential (L-Notation) | This models the complex, sub-exponential growth pattern. |
 | **Quadratic Sieve (QS)** | Sub-exponential (L-Notation) | This models the intensive, but predictable, exponential growth. |
-
-### The Workflow:
-
-1. **Loading:** Data is imported, and columns are automatically cleaned.
-2. **Fitting:** The `curve_fit` function finds the optimal parameters (a, b, c) to make the theoretical curve match your measured data.
-3. **Validation:** The R² value is calculated. Your strong results indicate an extremely high degree of fit between your experimental results and the theoretical complexity models.
-4. **Output:** Prints the R-squared values for your thesis's Table 5.1 and displays the three final validation plots.
