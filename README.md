@@ -1,63 +1,59 @@
 📊 Thesis Analysis: Predictable Scalability of Factorization Algorithms
 
-This document explains the purpose and usage of the regression_analysis.py script, which is used to analyze the collected data for Objective 1 of the thesis.
+This document explains the purpose and usage of the Python script used for Objective 1: Validating the Predictable Scalability of Classical Factorization Algorithms.
 
-Project Goal (Objective 1)
+The high R-squared ($R^2$) value produced by this analysis serves as the statistical proof that the increase in semiprime bit size leads to a highly reliable and mathematically predictable increase in Wall-Clock Runtime.
 
-The primary objective of this code is to prove that the Wall-Clock Runtime of the three classical integer factorization algorithms (Pollard's Rho, ECM, and Quadratic Sieve) is predictable and scalable.
+1. Required Packages
 
-This is achieved by using Non-Linear Regression to fit the measured runtime data to the theoretical complexity functions of each algorithm, and calculating the R-squared ($R^2$) value as a measure of predictability.
-
-Packages Required
-
-To run the analysis script, you must have the following Python packages installed.
+To run the analysis script, ensure you have the following packages installed using pip.
 
 Package
 
-Purpose
+Role in Analysis
 
 Installation Command
 
 pandas
 
-Imports data from CSV files.
+Data Handling: Imports the CSV files and cleans column headers.
 
 pip install pandas
 
 numpy
 
-Handles large numbers and complex math (log, power).
+Numerical Core: Handles all complex mathematical arrays and operations (logarithms, powers).
 
 pip install numpy
 
 scipy
 
-Performs the Non-Linear Regression (curve_fit).
+Statistical Analysis: Contains the crucial curve_fit function for Non-Linear Regression.
 
 pip install scipy
 
 scikit-learn
 
-Calculates the R-squared ($R^2$) metric.
+Validation: Calculates the R-squared ($\mathbf{R^2}$) value, which is the primary measure of predictability.
 
 pip install scikit-learn
 
 matplotlib
 
-Generates the final scatter plots and fitted curves.
+Visualization: Generates the final plots for your thesis's Results chapter.
 
 pip install matplotlib
 
-You can install all of them at once using:
+Summary Installation Command:
 
 pip install numpy scipy matplotlib scikit-learn pandas
 
 
-Data Preparation
+2. Data Requirement and Structure
 
-The script expects three specific CSV files, each containing the averaged runtime data from your 5 trials.
+The script is designed to load your three successfully collected data files.
 
-The files must be named exactly:
+File Naming: Files must be in the same folder as the script and named exactly:
 
 Laptop 3 - PR - Non Linear Data.csv
 
@@ -65,44 +61,46 @@ Laptop 3 - ECM - Non Linear Data.csv
 
 Laptop 3 - QS - Non Linear Data.csv
 
-Each file must have two columns with the exact headers:
+Column Headers: The script automatically strips spaces to avoid errors, but the fundamental headers must be present:
 
 Bit Length (x-axis)
 
 Mean Runtime (y-axis)
 
-How the Code Works (Simple Flow)
+3. How the Code Works
 
-The regression_analysis.py script performs three independent analyses:
+The main.py script performs three independent regression analyses, one for each algorithm, based on its theoretical complexity:
 
 Algorithm
 
-Model Used
+Theoretical Model Used
 
-Why This Model?
+Purpose
 
-Key Output
+Pollard's Rho (PR)
 
-Pollard's Rho
+Power Law Function ($y = a \cdot x^b$)
 
-Power Law Function
+This models the $\mathbf{O(\sqrt{p})}$ complexity.
 
-This models the algorithm's theoretical $O(\sqrt{p})$ time complexity.
-
-A high R² confirms predictable scalability.
-
-ECM / QS
+Elliptic Curve Method (ECM)
 
 Sub-exponential (L-Notation)
 
-This models the super-polynomial, but sub-exponential complexity of these algorithms.
+This models the complex, sub-exponential growth pattern.
 
-A high R² proves the experiment matches theory.
+Quadratic Sieve (QS)
 
-Data Loading: pandas reads the CSV files, extracting the Bit Length (X) and Mean Runtime (Y).
+Sub-exponential (L-Notation)
 
-Curve Fitting: The scipy.optimize.curve_fit function mathematically adjusts the parameters (like 'a', 'b', 'c') of the theoretical functions until the resulting curve passes as closely as possible through all the measured data points.
+This models the intensive, but predictable, exponential growth.
 
-Validation: The R-squared ($R^2$) value is calculated. A result $R^2 \ge 0.95$ proves that the measured execution time is highly predictable based on the increase in bit length.
+The Workflow:
 
-Visualization: matplotlib generates a three-panel plot showing the data points and the smooth, best-fit curve. This figure is used in your Chapter 5 Results section.
+Loading: Data is imported, and columns are automatically cleaned.
+
+Fitting: The curve_fit function finds the optimal parameters (a, b, c) to make the theoretical curve match your measured data.
+
+Validation: The $\mathbf{R^2}$ value is calculated. Your strong results indicate an extremely high degree of fit between your experimental results and the theoretical complexity models.
+
+Output: Prints the R-squared values for your thesis's Table 5.1 and displays the three final validation plots.
