@@ -1,4 +1,4 @@
-"Workload,CPU_Load,Clock_Speed,Peak_RAM,Battery_Consumption"
+﻿"Workload,CPU_Load,Clock_Speed,Peak_RAM,Battery_Consumption"
 "UW_Light,29.88,1893.00,5541.07,1.00"
 "UW_Moderate,46.67,1893.00,5555.39,0.40"
 "UW_Heavy,95.88,1893.00,6260.06,1.00"
