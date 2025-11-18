@@ -44,9 +44,9 @@ def load_data(filepath, y_col_suffix):
 print("Loading data for Objective 2 correlation analysis...")
 
 # We load data using the same paths as Objective 1
-pr_bits, pr_cpu_load = load_data("Laptop 3 - PR - Spearman Pearson Data.csv", "Load")
-ecm_bits, ecm_cpu_load = load_data("Laptop 3 - ECM - Spearman Pearson Data.csv", "Load")
-qs_bits, qs_cpu_load = load_data("Laptop 3 - QS - Spearman Pearson Data.csv", "Load")
+pr_bits, pr_cpu_load = load_data("Laptop 1 - PR - Spearman Pearson Data.csv", "Load")
+ecm_bits, ecm_cpu_load = load_data("Laptop 1 - ECM - Spearman Pearson Data.csv", "Load")
+qs_bits, qs_cpu_load = load_data("Laptop 1 - QS - Spearman Pearson Data.csv", "Load")
 
 # --- 3. Correlation Execution Function ---
 
