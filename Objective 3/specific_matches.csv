@@ -1,0 +1,4 @@
+UW_Target,Comparison_Group,Best_Match_In_Group,Euclidean_Distance
+UW_Light,PR (Light),PR_104,0.39633
+UW_Moderate,ECM (Moderate),ECM_64,0.13123
+UW_Heavy,QS (Heavy),QS_48,0.40792
