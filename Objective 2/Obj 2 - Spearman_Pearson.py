@@ -1,138 +1,179 @@
 import numpy as np
-from scipy.stats import pearsonr, spearmanr # Import correlation functions
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr, spearmanr, rankdata
+from scipy.interpolate import UnivariateSpline
+import os # <--- IMPORTED OS MODULE HERE
+import sys # Added for clean exit on FileNotFoundError
 
-# --- 1. Define Data Loader (Modified to look for CPU Load) ---
 
-def load_data(filepath, y_col_suffix):
-    """
-    Loads CSV data, assuming 'Bit Length' is the X-axis and Y is determined by the suffix.
-    """
+# --- Path Utility ---
+def get_file_path(filename):
+    """Constructs the absolute path to the data file in the script's directory."""
+    try:
+        # Get the directory of the currently executing script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    except NameError:
+        # Fallback for interactive environments (though correlation usually runs as script)
+        script_dir = os.getcwd()
+
+    return os.path.join(script_dir, filename)
+
+
+# --- Data loader ---
+def load_data(filepath):
     try:
         df = pd.read_csv(filepath)
         df.columns = df.columns.str.strip()
-        
         x_col = 'Bit Length (x-axis)'
-        
-        # We need to find the CPU Load data for Objective 2. 
-        # Assuming the CSV files contain a column for CPU Load if used for this objective.
-        y_col = 'Mean CPU Load (y-axis)' # Assuming CPU Load data is in this column name
-        
+        y_col = 'CPU Load (y-axis)'
+
         if x_col not in df.columns or y_col not in df.columns:
-            # Fallback for demonstration: if the file only has Runtime, we cannot run Objective 2 accurately.
-            # We'll check the original file's Y column name from Objective 1 for now.
             if 'Mean Runtime (y-axis)' in df.columns:
                 print(f"Warning: Using 'Mean Runtime' data from {filepath} as proxy for CPU Load.")
                 y_col = 'Mean Runtime (y-axis)'
             else:
-                raise ValueError(f"Required columns '{x_col}' or '{y_col}' not found.")
-
+                raise ValueError(f"Required columns '{x_col}' or '{y_col}' not found in {filepath}.")
 
         x_data = df[x_col].values.astype(np.float64)
         y_data = df[y_col].values.astype(np.float64)
 
         if len(x_data) < 4:
-             raise ValueError(f"Insufficient data points ({len(x_data)} found). Must have at least 4 points.")
-        
+            raise ValueError(f"Insufficient data points ({len(x_data)} found). Must have at least 4 points.")
+
         return x_data, y_data
+
     except Exception as e:
         print(f"Error loading data from {filepath}: {e}")
         return np.array([]), np.array([])
 
-# --- 2. INPUT DATA: Load from CSV Files ---
-print("Loading data for Objective 2 correlation analysis...")
+# --- Plot Pearson ---
+def plot_pearson(name, x, y, color='tab:blue'):
+    r_val, p_val = pearsonr(x, y)
+    pearson_success = "PASSED" if (r_val > 0.9 and p_val < 0.05) else "FAILED"
 
-# We load data using the same paths as Objective 1
-pr_bits, pr_cpu_load = load_data("Laptop 1 - PR - Spearman Pearson Data.csv", "Load")
-ecm_bits, ecm_cpu_load = load_data("Laptop 1 - ECM - Spearman Pearson Data.csv", "Load")
-qs_bits, qs_cpu_load = load_data("Laptop 1 - QS - Spearman Pearson Data.csv", "Load")
+    coeffs = np.polyfit(x, y, 1)
+    line_x = np.linspace(np.min(x), np.max(x), 200)
+    line_y = np.polyval(coeffs, line_x)
 
-# --- 3. Correlation Execution Function ---
+    plt.figure(figsize=(8,6))
+    plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
+    plt.plot(line_x, line_y, linestyle='--', linewidth=2, label='Linear fit', color=color)
+    plt.title(f"Pearson: {name} (Laptop 2)", fontsize=14)
+    stats_text = f"Pearson r = {r_val:.4f}\np-value = {p_val:.2e}\nSuccess: {pearson_success}"
+    plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
+             fontsize=10, verticalalignment='top',
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
+    plt.xlabel('Semiprime Bit Length (Input Size)')
+    plt.ylabel('CPU Load (%)')
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend(loc='lower right')
+    plt.tight_layout()
 
-def run_correlation_and_plot(name, x_data, y_data, plot_color='b'):
-    """Performs dual correlation (Pearson, Spearman) and creates a separate plot."""
-    if len(x_data) < 4:
-        print(f"\n--- SKIPPING {name} --- Insufficient data points.")
-        return None, None
-        
+    return r_val, p_val, pearson_success
+
+# --- Plot Spearman ---
+def plot_spearman_smooth(name, x, y, color='tab:orange', smoothing_factor=None):
+    rho_val, rho_p = spearmanr(x, y)
+    spearman_success = "PASSED" if (rho_val > 0.9 and rho_p < 0.05) else "FAILED"
+
+    x_rank = rankdata(x)
+    y_rank = rankdata(y)
+    sort_idx = np.argsort(x)
+    x_sorted = x[sort_idx]
+    xrank_sorted = x_rank[sort_idx]
+    yrank_sorted = y_rank[sort_idx]
+    y_sorted = y[sort_idx]
+
+    if smoothing_factor is None:
+        smoothing_factor = max(1.0, len(x) * 0.5)
+
     try:
-        # Calculate Pearson Correlation (r)
-        r_corr, r_pvalue = pearsonr(x_data, y_data)
-        
-        # Calculate Spearman Rank Correlation (rho)
-        rho_corr, rho_pvalue = spearmanr(x_data, y_data)
-        
-        # --- Print Results (Console) ---
-        print(f"\n--- {name} Correlation Results ---")
-        print(f"Variables: Bit Length vs. CPU Load (or Runtime)")
-        print(f"Pearson (r): {r_corr:.4f} (p-value: {r_pvalue:.4e})")
-        print(f"Spearman (ρ): {rho_corr:.4f} (p-value: {rho_pvalue:.4e})")
+        spline = UnivariateSpline(xrank_sorted, yrank_sorted, s=smoothing_factor)
+        dense_xrank = np.linspace(np.min(xrank_sorted), np.max(xrank_sorted), 400)
+        dense_yrank = spline(dense_xrank)
+        dense_x = np.interp(dense_xrank, xrank_sorted, x_sorted)
+        dense_y = np.interp(dense_yrank, yrank_sorted, y_sorted)
 
-        # Determine Success Criterion (Spearman rho > 0.9 and p < 0.05)
-        success_status = "PASSED" if (rho_corr > 0.9 and rho_pvalue < 0.05) else "FAILED"
-        print(f"H2 Success Status: {success_status}")
-
-        # --- Plotting ---
-        plt.figure(figsize=(9, 7))
-        plt.scatter(x_data, y_data, color=plot_color, s=70, label='Data Points') 
-
-        # Add title and stats box
-        title_str = f"Objective 2: {name} Resource Scaling (Laptop 1)"
-        plt.title(title_str, fontsize=14)
-        
-        stats_text = (
-            f"Result: {success_status}\n"
-            f"Pearson (r): {r_corr:.4f} (p={r_pvalue:.2e})\n"
-            f"Spearman (ρ): {rho_corr:.4f} (p={rho_pvalue:.2e})\n"
-            f"Success Criterion: ρ > 0.9 & p < 0.05"
-        )
+        plt.figure(figsize=(8,6))
+        plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
+        plt.plot(dense_x, dense_y, linewidth=2.5, label='Smoothed trend', color=color, alpha=0.95)
+        plt.title(f"Spearman (LOWESS-like): {name} (Laptop 2)", fontsize=14)
+        stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
         plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
-                 fontsize=10, verticalalignment='top', 
-                 bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.8))
-
+                 fontsize=10, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
         plt.xlabel('Semiprime Bit Length (Input Size)')
-        plt.ylabel('Mean CPU Load Percentage (or Runtime)') # Keep general label
-        plt.legend(loc='lower right', fontsize=10)
-        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.ylabel('CPU Load (%)')
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.legend(loc='lower right')
         plt.tight_layout()
-        
-        return r_corr, r_pvalue, rho_corr, rho_pvalue
-        
+
     except Exception as e:
-        print(f"\n--- ERROR running correlation for {name} ---: {e}")
-        return 0.0, 1.0, 0.0, 1.0
+        print(f"Warning: Spearman smoothing failed for {name}: {e}")
+        plt.figure(figsize=(8,6))
+        plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
+        plt.title(f"Spearman (ranks plotted): {name} (Laptop 1)", fontsize=14)
+        stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
+        plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
+                 fontsize=10, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
+        plt.xlabel('Semiprime Bit Length (Input Size)')
+        plt.ylabel('CPU Load (%)')
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.legend(loc='lower right')
+        plt.tight_layout()
 
-# --- 4. Main Execution and Plotting ---
+    return rho_val, rho_p, spearman_success
 
-# These calls will now each create a separate figure object.
-r_pr, p_pr, rho_pr, prho_pr = run_correlation_and_plot(
-    "Pollard's Rho", pr_bits, pr_cpu_load, 'g'
-)
+# --- Main execution ---
+def run_all_and_summary(pr_file, ecm_file, qs_file):
+    # Use the utility function to get the absolute paths
+    pr_path = get_file_path(pr_file)
+    ecm_path = get_file_path(ecm_file)
+    qs_path = get_file_path(qs_file)
 
-r_ecm, p_ecm, rho_ecm, prho_ecm = run_correlation_and_plot(
-    "ECM", ecm_bits, ecm_cpu_load, 'b'
-)
+    pr_x, pr_y = load_data(pr_path)
+    ecm_x, ecm_y = load_data(ecm_path)
+    qs_x, qs_y = load_data(qs_path)
 
-r_qs, p_qs, rho_qs, prho_qs = run_correlation_and_plot(
-    "Quadratic Sieve", qs_bits, qs_cpu_load, 'r'
-)
+    summary = {}
 
-# This one plt.show() command will display all 3 figures at once.
-plt.show()
+    if pr_x.size < 4:
+        print(f"Skipping Pollard's Rho due to insufficient data loaded from: {pr_path}")
+    else:
+        r_pr, p_pr, r_success = plot_pearson("Pollard's Rho", pr_x, pr_y, color='tab:green')
+        rho_pr, prho_pr, rho_success = plot_spearman_smooth("Pollard's Rho", pr_x, pr_y, color='tab:olive')
+        summary["Pollard's Rho"] = (r_pr, p_pr, r_success, rho_pr, prho_pr, rho_success)
 
-# --- 5. Output for Thesis Table 5.4 ---
-print("\n--- Summary for Thesis Table 5.4 (Laptop 1) ---")
-print("| Algorithm | Pearson (r) | Spearman (ρ) | Spearman p-value | H2 Success |")
-print("|---|---|---|---|---|")
+    if ecm_x.size < 4:
+        print(f"Skipping ECM due to insufficient data loaded from: {ecm_path}")
+    else:
+        r_ecm, p_ecm, r_success = plot_pearson("ECM", ecm_x, ecm_y, color='tab:blue')
+        rho_ecm, prho_ecm, rho_success = plot_spearman_smooth("ECM", ecm_x, ecm_y, color='tab:cyan')
+        summary["ECM"] = (r_ecm, p_ecm, r_success, rho_ecm, prho_ecm, rho_success)
 
-data = {
-    "Pollard's Rho": [r_pr, rho_pr, prho_pr],
-    "ECM": [r_ecm, rho_ecm, prho_ecm],
-    "Quadratic Sieve": [r_qs, rho_qs, prho_qs],
-}
+    if qs_x.size < 4:
+        print(f"Skipping Quadratic Sieve due to insufficient data loaded from: {qs_path}")
+    else:
+        r_qs, p_qs, r_success = plot_pearson("Quadratic Sieve", qs_x, qs_y, color='tab:red')
+        rho_qs, prho_qs, rho_success = plot_spearman_smooth("Quadratic Sieve", qs_x, qs_y, color='tab:orange')
+        summary["Quadratic Sieve"] = (r_qs, p_qs, r_success, rho_qs, prho_qs, rho_success)
 
-for name, values in data.items():
-    r, rho, p_rho = values
-    success = "PASSED" if (rho > 0.9 and p_rho < 0.05) else "FAILED"
-    print(f"| {name} | {r:.4f} | {rho:.4f} | {p_rho:.4e} | {success} |")
+    plt.show()
+
+    # --- Summary Table ---
+    print("\n--- Summary for Thesis Table 5.4 (Laptop 2) ---")
+    print("| Algorithm | Pearson (r) | Pearson p | Pearson Success | Spearman (ρ) | Spearman p | Spearman Success |")
+    print("|---|---:|---:|:---:|---:|---:|:---:|")
+    for name, vals in summary.items():
+        r, p, r_s, rho, prho, rho_s = vals
+        print(f"| {name} | {r:.4f} | {p:.2e} | {r_s} | {rho:.4f} | {prho:.2e} | {rho_s} |")
+
+# --- Run ---
+if __name__ == "__main__":
+    run_all_and_summary(
+        "Laptop 1 - PR - SPearson.csv",
+        "Laptop 1 - ECM - SPearson.csv",
+        "Laptop 1 - QS - SPearson.csv"
+    )
