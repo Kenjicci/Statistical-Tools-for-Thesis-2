@@ -78,7 +78,7 @@ def run_correlation_and_plot(name, x_data, y_data, plot_color='b'):
         plt.scatter(x_data, y_data, color=plot_color, s=70, label='Data Points') 
 
         # Add title and stats box
-        title_str = f"Objective 2: {name} Resource Scaling (Laptop 3)"
+        title_str = f"Objective 2: {name} Resource Scaling (Laptop 1)"
         plt.title(title_str, fontsize=14)
         
         stats_text = (
@@ -122,7 +122,7 @@ r_qs, p_qs, rho_qs, prho_qs = run_correlation_and_plot(
 plt.show()
 
 # --- 5. Output for Thesis Table 5.4 ---
-print("\n--- Summary for Thesis Table 5.4 (Laptop 3) ---")
+print("\n--- Summary for Thesis Table 5.4 (Laptop 1) ---")
 print("| Algorithm | Pearson (r) | Spearman (ρ) | Spearman p-value | H2 Success |")
 print("|---|---|---|---|---|")
 
