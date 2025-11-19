@@ -229,8 +229,8 @@ def system_metrics_after(before):
 # =====================================================================
 
 def run_batch(semiprimes: List[int], save_dir: str):
-    before = system_metrics_before()
-    if before["charging"]:
+    before_metrics = system_metrics_before()
+    if before_metrics["charging"]:
         print("⚠️  Device is charging. Skipping benchmark to avoid interference.")
         return
     monitor = SystemMonitor(interval=0.5)
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     algorithm_name = "ECM"
 
-    save_dir = r"C:\Users\Frances Bea Magdayao\Desktop\Thesisenv\Objective 2\ECM AW logs"
+    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 5 Resources"
     os.makedirs(save_dir, exist_ok=True)
     log_filename = os.path.join(save_dir, f"{algorithm_name}_{timestamp}.txt")
 

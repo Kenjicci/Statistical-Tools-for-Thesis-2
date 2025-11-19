@@ -6,14 +6,13 @@ import sys
 
 # --- CONFIGURATION ---
 # 1. WE NEED THE RAW AW DATA TO GET THE CORRECT SCALING PARAMETERS
-AW_RAW_FILE = 'Step 1 Resources/ECM_fastfind_and_uw_raw_metrics.csv' 
+AW_RAW_FILE = 'Step 3 Resources/ECM_fastfind_and_uw_raw_metrics.csv' 
 # 2. WE NEED THE RAW UW TRIALS
 UW_RAW_FILE = 'Step 3 Resources/UW_moderate_raw_trials.csv'
 
 # Output Files
-OUTPUT_CI_FILE = 'ECM_CI_Analysis.csv'
-OUTPUT_RANGE_FILE = 'ECM_Optimal_Range.csv'
-
+OUTPUT_CI_FILE = 'Step 4 Resources/ECM_CI_Analysis.txt'
+OUTPUT_RANGE_FILE = 'Step 4 Resources/ECM_Optimal_Range.txt'
 # Define metrics
 METRICS_RAW = ['CPU_Load', 'Peak_RAM', 'Clock_Speed', 'Battery_Consumption']
 METRICS_NORM = ['Normalized_CPU_Load', 'Normalized_Peak_RAM', 'Normalized_Clock_Speed', 'Normalized_Battery_Consumption']

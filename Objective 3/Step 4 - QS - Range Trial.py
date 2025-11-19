@@ -791,7 +791,7 @@ if __name__ == "__main__":
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     algorithm_name = "QS_Batch"
-    save_dir = r"C:\Users\Frances Bea Magdayao\Desktop\Thesisenv\Objective 2\QS AW logs"
+    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 5 Resources"
     os.makedirs(save_dir, exist_ok=True)
     log_filename = os.path.join(save_dir, f"{algorithm_name}_{timestamp}.txt")
 
