@@ -27,7 +27,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Combine that directory with the filename
 input_file = os.path.join(script_dir, 'Step 1 Resources/PR_fastfind_and_uw_raw_metrics.csv')
-output_file = os.path.join(script_dir, 'Step 2 Resources/PR_raw_metrics_scaled.csv')
+output_file = os.path.join(script_dir, 'Step 2 Resources/PR_scaled_metrics.csv')
 
 print(f"Looking for file at: {input_file}") # Debug print to confirm location
 

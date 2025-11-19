@@ -6,11 +6,11 @@ import sys
 
 # --- CONFIGURATION ---
 # Input Files
-AW_SCALED_FILE = 'PR_raw_metrics_scaled.csv'   # Contains Normalized_ columns for all PR candidates
-UW_RAW_FILE = 'UW_Light_raw_trials.csv'        # Contains raw columns for 5 trials
+AW_SCALED_FILE = 'Step 2 Resources/QS_scaled_metrics.csv'   # Contains Normalized_ columns for all PR candidates
+UW_RAW_FILE = 'Step 3 Resources/UW_heavy_raw_trials.csv'        # Contains raw columns for 5 trials
 # Output Files
-OUTPUT_CI_FILE = 'PR_CI_Analysis.csv'          # Detailed CI results
-OUTPUT_RANGE_FILE = 'PR_Optimal_Range.csv'     # The final list of valid proxies
+OUTPUT_CI_FILE = 'Step 4 Resources/QS_CI_Analysis.csv'          # Detailed CI results
+OUTPUT_RANGE_FILE = 'Step 4 Resources/QS_Optimal_Range.csv'     # The final list of valid proxies
 
 METRICS_RAW = ['CPU_Load', 'Peak_RAM', 'Clock_Speed', 'Battery_Consumption']
 METRICS_NORM = ['Normalized_CPU_Load', 'Normalized_Peak_RAM', 'Normalized_Clock_Speed', 'Normalized_Battery_Consumption']
@@ -108,7 +108,7 @@ valid_proxies = df_results[df_results['Mean_Distance'] <= threshold].copy()
 valid_proxies_list = valid_proxies['Workload'].tolist()
 
 print(f"\n--- Valid Proxy Range (Soft Tier) ---")
-print(f"The following bit sizes are statistically equivalent to UW_Light:")
+print(f"The following bit sizes are statistically equivalent to UW_Heavy:")
 print(valid_proxies_list)
 
 # --- 5. EXPORT ---

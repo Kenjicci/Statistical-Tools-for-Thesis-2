@@ -78,9 +78,9 @@ try:
 except NameError:
     script_dir = os.getcwd()
 
-input_file = os.path.join(script_dir, 'ECM_raw_metrics_scaled.csv')
-output_file_best = os.path.join(script_dir, 'ECM_specific_matches.csv') # The Summary
-output_file_all = os.path.join(script_dir, 'ECM_all_distances.csv')     # The Full Table
+input_file = os.path.join(script_dir, 'Step 2 Resources/ECM_scaled_metrics.csv')
+output_file_best = os.path.join(script_dir, 'Step 3 Resources/ECM_specific_matches.csv') # The Summary
+output_file_all = os.path.join(script_dir, 'Step 3 Resources/ECM_all_distances.csv')     # The Full Table
 
 # 2. Load Data
 try:
