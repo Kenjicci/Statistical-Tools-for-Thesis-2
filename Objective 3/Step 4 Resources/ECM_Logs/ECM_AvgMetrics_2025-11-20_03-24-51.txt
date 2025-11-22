@@ -1,0 +1,28 @@
+Log started at 2025-11-20_03-24-51
+Output file: C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 4 Resources\ECM_Logs\ECM_AvgMetrics_2025-11-20_03-24-51.txt
+======================================================================
+Enter a semiprime to factor using ECM: 
+======================================================================
+Factoring with Parallel ECM (Stage 1 Only)
+======================================================================
+Number: 242553381798877820721659119435763816513
+Bit size: 128 bits
+B1 (Stage 1 bound): 100,000
+Max curves: 4,000
+Workers: 12
+======================================================================
+
+Result: 242553381798877820721659119435763816513 = 16032411193786624243 × 15128939675204912891
+Verified: ✓ Success
+Workers used: 12
+Curves attempted: ~4,000
+
+--- Performance Metrics ---
+Runtime: 168.57 seconds (2.81 minutes)
+Average CPU Load: 38.40%
+Peak CPU Clock Speed: 1893.00 MHz
+Peak RAM Usage: 5453.88 MB
+Battery Before: 45%
+Battery After: 44%
+Battery Consumption: 1.00%
+======================================================================

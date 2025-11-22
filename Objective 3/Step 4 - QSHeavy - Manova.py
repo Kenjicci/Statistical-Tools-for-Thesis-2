@@ -11,20 +11,16 @@ import math
 # =============================================================================
 
 # 1. Define Input Files (Relative to this script)
-AW_FILE = os.path.join('Step 5 Resources', 'medium_points_raw_trial.csv')
-UW_FILE = os.path.join('Step 3 Resources', 'UW_moderate_raw_trial.csv')
+AW_FILE = os.path.join('Step 4 Resources', 'QS_40_raw_trials_reduced.csv')
+UW_FILE = os.path.join('Step 4 Resources', 'UW_heavy_raw_trials.csv')
 
 # 2. Define Output File
-OUTPUT_FILE = 'Step 5 - ECMModerate_MANOVA_Results.txt'
-
+OUTPUT_FILE = 'Step 4 - QSHeavy_MANOVA_Results.txt'
 # 3. Define the Metric Columns to Test
-# NOTE: Ensure these match your CSV headers EXACTLY.
-# For Moderate tier, we often exclude Battery if it is 0.
+# NOTE: For Light Tier, we exclude Battery and Clock Speed (Constant/Zero Variance)
 CANDIDATE_METRICS = [
     'CPU_Load', 
-    'Peak_RAM', 
-    'Clock_Speed', 
-    'Battery_Consumption'
+    'Peak_RAM',
 ]
 
 # =============================================================================
@@ -72,7 +68,7 @@ def run_manova():
     uw_path = os.path.join(script_dir, UW_FILE)
     output_path = os.path.join(script_dir, OUTPUT_FILE)
 
-    print(f"--- Loading Data for Moderate Tier ---")
+    print(f"--- Loading Data for Hard Tier ---")
     if not os.path.exists(aw_path) or not os.path.exists(uw_path):
         print(f"Error: Input files not found.")
         print(f"Checked: {aw_path}")
@@ -88,15 +84,14 @@ def run_manova():
         sys.exit()
 
     # Assign Groups
-    df_aw['Group'] = 'AW_ECM'
-    df_uw['Group'] = 'UW_Moderate'
+    df_aw['Group'] = 'AW_QS'
+    df_uw['Group'] = 'UW_Heavy'
 
     # Combine
     df_comb = pd.concat([df_aw, df_uw], axis=0, ignore_index=True)
     print(f"Combined Data: {len(df_comb)} total rows (Should be 10 if 5+5)")
 
     # 3. Filter Columns & Check Assumptions
-    # We strictly use the raw metrics defined in config
     try:
         # Select only numeric columns for the test
         df_test = df_comb[['Group'] + CANDIDATE_METRICS].copy()
@@ -106,7 +101,7 @@ def run_manova():
         print(f"Found in CSV: {df_comb.columns.tolist()}")
         sys.exit()
 
-    # Run checks and get the final list of valid metrics (dropping constants)
+    # Run checks and get the final list of valid metrics
     final_metrics = check_assumptions(df_test, 'Group', CANDIDATE_METRICS)
     
     if not final_metrics:
@@ -117,44 +112,64 @@ def run_manova():
     print(f"Comparison: AW_ECM vs UW_Moderate")
     print(f"Feature Vector: {final_metrics}")
     
-    # Construct Formula: "Metric1 + Metric2 ~ Group"
-    # Use Q() to handle potential spaces in column names
+    # Construct Formula
     formula = ' + '.join([f'{m}' for m in final_metrics]) + ' ~ Group'
     
     try:
         manova = MANOVA.from_formula(formula, data=df_test)
         manova_results = manova.mv_test()
         
-        # Extract Pillai's Trace (Robust Metric)
-        # Structure: results['Term']['stat'].loc['Test', 'Pr > F']
+        # --- EXTRACTING SPECIFIC STATISTICS ---
+        # Access the results table for the 'Group' term
         res_table = manova_results.results['Group']['stat']
+        
+        # 1. Test Statistic (Wilk's Lambda Value)
+        wilks_stat = res_table.loc["Wilks' lambda", "Value"]
+        
+        # 2. F-Value (Wilk's Lambda F Value)
+        wilks_f = res_table.loc["Wilks' lambda", "F Value"]
+        
+        # 3. P-Value (Wilk's Lambda Pr > F)
+        wilks_p = res_table.loc["Wilks' lambda", "Pr > F"]
+        
+        # (Optional) Pillai's Trace for robust checking
         pillai_p = res_table.loc["Pillai's trace", "Pr > F"]
         
-        print("\n--- MANOVA RESULTS ---")
+        print("\n--- MANOVA RESULTS TABLE ---")
         print(manova_results)
         
-        # 5. Interpretation
-        print("\n" + "="*40)
-        print("FINAL STATISTICAL DECISION")
-        print("="*40)
-        print(f"Pillai's Trace p-value: {pillai_p:.5f}")
+        # 5. Interpretation & Detailed Output
+        print("\n" + "="*50)
+        print("     FINAL STATISTICAL REPORT (For Thesis)")
+        print("="*50)
+        print(f"Test Statistic (Wilk's Λ): {wilks_stat:.5f}")
+        print(f"F-value:                   {wilks_f:.5f}")
+        # Use scientific notation for p-value if it is extremely small
+        print(f"p-value (Pr > F):          {wilks_p:.5e}")
+        print("-" * 50)
         
         result_str = ""
-        if pillai_p > 0.05:
+        result_str += f"Test Statistic (Wilk's Λ): {wilks_stat:.5f}\n"
+        result_str += f"F-value: {wilks_f:.5f}\n"
+        result_str += f"p-value: {wilks_p:.5e}\n\n"
+        
+        if wilks_p > 0.05:
             result_str += "DECISION: ACCEPT Null Hypothesis (H0)\n"
-            result_str += "CONCLUSION: There is NO significant difference between the groups.\n"
-            result_str += "VALIDATION: The ECM points are a STATISTICALLY VALID PROXY."
+            result_str += "CONCLUSION: No significant difference (Statistically Equivalent).\n"
         else:
             result_str += "DECISION: REJECT Null Hypothesis (H0)\n"
-            result_str += "CONCLUSION: There IS a significant difference between the groups.\n"
-            result_str += "VALIDATION: The ECM points are NOT a valid proxy."
+            result_str += "CONCLUSION: Significant difference exists (Not Statistically Equivalent).\n"
+            if wilks_p < 0.0001:
+                result_str += "(Note: p < 0.0001 indicates an extremely strong statistical difference.)"
             
         print(result_str)
         
         # Save to file
         with open(output_path, "w") as f:
             f.write(str(manova_results))
-            f.write("\n\n" + "="*40 + "\n")
+            f.write("\n\n" + "="*50 + "\n")
+            f.write("EXTRACTED METRICS\n")
+            f.write("="*50 + "\n")
             f.write(result_str)
         print(f"\nResults saved to: {output_path}")
 

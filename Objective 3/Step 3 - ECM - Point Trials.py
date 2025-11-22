@@ -1,12 +1,13 @@
 import math
 import random
 import timeit
-import threading
 import os
 import sys
 import multiprocessing
 import psutil
 import datetime
+import threading
+import time
 from typing import Optional, Tuple, List
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -60,6 +61,10 @@ class ECMPoint:
         self.z = z % n
         self.n = n
 
+    def __repr__(self):
+        return f"ECMPoint({self.x}, {self.z})"
+
+
 def ecm_add(P: ECMPoint, Q: ECMPoint, diff: ECMPoint, a24: int) -> ECMPoint:
     n = P.n
     u = ((P.x - P.z) * (Q.x + Q.z)) % n
@@ -69,6 +74,7 @@ def ecm_add(P: ECMPoint, Q: ECMPoint, diff: ECMPoint, a24: int) -> ECMPoint:
     x = (diff.z * upv * upv) % n
     z = (diff.x * umv * umv) % n
     return ECMPoint(x, z, n)
+
 
 def ecm_double(P: ECMPoint, a24: int) -> ECMPoint:
     n = P.n
@@ -81,6 +87,7 @@ def ecm_double(P: ECMPoint, a24: int) -> ECMPoint:
     z = (diff * ((v2 + a24 * diff) % n)) % n
     return ECMPoint(x, z, n)
 
+
 def ecm_multiply(k: int, P: ECMPoint, a24: int) -> ECMPoint:
     R0 = ECMPoint(1, 0, P.n)
     R1 = P
@@ -92,6 +99,7 @@ def ecm_multiply(k: int, P: ECMPoint, a24: int) -> ECMPoint:
             R0 = ecm_add(R0, R1, P, a24)
             R1 = ecm_double(R1, a24)
     return R0
+
 
 def generate_curve_and_point(n: int) -> Tuple[ECMPoint, int]:
     while True:
@@ -109,6 +117,7 @@ def generate_curve_and_point(n: int) -> Tuple[ECMPoint, int]:
         except Exception:
             continue
 
+
 def ecm_stage1(P: ECMPoint, a24: int, B1: int) -> Tuple[ECMPoint, List[int]]:
     n = P.n
     primes = sieve_primes(B1)
@@ -122,6 +131,7 @@ def ecm_stage1(P: ECMPoint, a24: int, B1: int) -> Tuple[ECMPoint, List[int]]:
         if 1 < g < n:
             return Q, primes
     return Q, primes
+
 
 def ecm_factor_single(n: int, max_curves: int, B1: int, seed: int) -> Optional[int]:
     random.seed(seed)
@@ -164,123 +174,41 @@ def ecm_factor_parallel(n: int, max_curves: int = 4000, B1: int = 100000, worker
     return None, max_curves, workers
 
 
-# =====================================================================
-# Continuous System Monitor
-# =====================================================================
+# ============================================================================
+# System Monitor (Average CPU + Peak Clock Speed)
+# ============================================================================
 
 class SystemMonitor(threading.Thread):
-    """Monitor CPU load (avg) and clock speed (peak) while running."""
+    """Monitors average CPU load and peak clock speed during execution."""
     def __init__(self, interval=0.5):
         super().__init__()
         self.interval = interval
-        self.cpu_samples = []
+        self.samples = []
         self.peak_freq = 0.0
         self._stop_event = threading.Event()
 
     def run(self):
+        psutil.cpu_percent(interval=None)  # Initialize baseline
         while not self._stop_event.is_set():
             cpu_load = psutil.cpu_percent(interval=None)
             freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0.0
-            self.cpu_samples.append(cpu_load)
+            self.samples.append(cpu_load)
             self.peak_freq = max(self.peak_freq, freq)
-            timeit.time.sleep(self.interval)
+            time.sleep(self.interval)
 
     def stop(self):
         self._stop_event.set()
 
-    @property
-    def average_cpu(self):
-        return sum(self.cpu_samples) / len(self.cpu_samples) if self.cpu_samples else 0.0
-
-# =====================================================================
-# System Metrics (Memory + Battery)
-# =====================================================================
-
-def system_metrics_before():
-    battery = psutil.sensors_battery()
-    return {
-        "memory": psutil.virtual_memory().used / (1024 * 1024),
-        "battery": battery.percent if battery else None,
-        "charging": battery.power_plugged if battery else None,
-    }
-
-def system_metrics_after(before):
-    battery = psutil.sensors_battery()
-    after = {
-        "memory": psutil.virtual_memory().used / (1024 * 1024),
-        "battery": battery.percent if battery else None,
-        "charging": battery.power_plugged if battery else None,
-    }
-
-    battery_consumption = None
-    if before["battery"] is not None and after["battery"] is not None:
-        battery_consumption = before["battery"] - after["battery"]
-
-    return {
-        "peak_memory": max(before["memory"], after["memory"]),
-        "battery_before": before["battery"],
-        "battery_after": after["battery"],
-        "battery_consumption": battery_consumption,
-        "charging": after["charging"],
-    }
-
-# =====================================================================
-# Batch Runner Function
-# =====================================================================
-
-def run_batch(semiprimes: List[int], save_dir: str):
-    before_metrics = system_metrics_before()
-    if before_metrics["charging"]:
-        print("⚠️  Device is charging. Skipping benchmark to avoid interference.")
-        return
-    monitor = SystemMonitor(interval=0.5)
-    monitor.start()
-
-    start_time = timeit.default_timer()
-    successes = 0
-
-    for n in semiprimes:
-        try:
-            p, q, used_workers, curves = factorize_semiprime_ecm_parallel(n)
-            print(f"✓ Success on {n}")
-            successes += 1
-        except Exception as e:
-            print(f"✗ Failed on {n} ({e})")
-
-    total_runtime = timeit.default_timer() - start_time
-    monitor.stop()
-    monitor.join()
-    after_metrics = system_metrics_after(before_metrics)
-
-    # --- Summary ---
-    print("\n" + "=" * 70)
-    print("Batch Summary")
-    print("=" * 70)
-    print(f"Total Semiprimes Tested: {len(semiprimes)}")
-    print(f"Successful Runs: {successes}/{len(semiprimes)}")
-    success_rate = (successes / len(semiprimes)) * 100
-    print(f"Success Rate: {success_rate:.2f}%")
-
-    print("\n--- Performance Metrics ---")
-    print(f"Total Runtime: {total_runtime:.2f} seconds ({total_runtime/60:.2f} minutes)")
-    print(f"Throughput: {successes / total_runtime:.4f} successful factorizations/second")
-    print(f"Average CPU Load: {monitor.average_cpu:.2f}%")
-    print(f"Peak RAM Usage: {after_metrics['peak_memory']:.2f} MB")
-    print(f"Peak CPU Clock Speed: {monitor.peak_freq:.2f} MHz")
-
-    if after_metrics["battery_before"] is not None:
-        print(f"Battery Before: {after_metrics['battery_before']}%")
-        print(f"Battery After: {after_metrics['battery_after']}%")
-        print(f"Battery Consumption: {after_metrics['battery_consumption']:.2f}%")
-
-    print("=" * 70)
+    def average_cpu(self) -> float:
+        return sum(self.samples) / len(self.samples) if self.samples else 0.0
 
 
 # ============================================================================
-# Benchmark and Aggregate Results
+# Benchmark Wrapper
 # ============================================================================
 
 def factorize_semiprime_ecm_parallel(n: int, max_curves: int = 4000, B1: int = 100000, workers: int = None) -> Tuple[int, int, int, int]:
+    """Return (p, q, workers_used, curves_attempted)."""
     factor, curves, workers = ecm_factor_parallel(n, max_curves=max_curves, B1=B1, workers=workers)
     if factor and factor != n and n % factor == 0:
         return factor, n // factor, workers, curves
@@ -288,39 +216,99 @@ def factorize_semiprime_ecm_parallel(n: int, max_curves: int = 4000, B1: int = 1
         raise ValueError("ECM failed to factorize")
 
 
-# =====================================================================
-# Main
-# =====================================================================
+def benchmark_ecm_parallel(n: int, max_curves: int = 4000, B1: int = 100000, workers: int = None):
+    bit_size = n.bit_length()
+    
+    print(f"\n{'='*70}")
+    print(f"Factoring with Parallel ECM (Stage 1 Only)")
+    print(f"{'='*70}")
+    print(f"Number: {n}")
+    print(f"Bit size: {bit_size} bits")
+    print(f"B1 (Stage 1 bound): {B1:,}")
+    print(f"Max curves: {max_curves:,}")
+    print(f"Workers: {workers or os.cpu_count()}")
+    print(f"{'='*70}\n")
+
+    battery = psutil.sensors_battery()
+    before_battery = battery.percent if battery else None
+    if battery and battery.power_plugged:
+        print("⚠️  Device is charging. Skipping benchmark to avoid battery interference.")
+        return
+
+    before_memory = psutil.virtual_memory().used / (1024 * 1024)
+
+    # Start system monitor
+    monitor = SystemMonitor(interval=0.5)
+    monitor.start()
+
+    start_time = timeit.default_timer()
+    try:
+        p, q, used_workers, curves = factorize_semiprime_ecm_parallel(n, max_curves=max_curves, B1=B1, workers=workers)
+    finally:
+        monitor.stop()
+        monitor.join()
+    end_time = timeit.default_timer()
+
+    after_memory = psutil.virtual_memory().used / (1024 * 1024)
+    after_battery = psutil.sensors_battery().percent if psutil.sensors_battery() else None
+
+    runtime = end_time - start_time
+
+    # --- Verification ---
+    if p * q == n:
+        print(f"Result: {n} = {p} × {q}")
+        print(f"Verified: ✓ Success")
+    else:
+        print(f"Result: {p} × {q} = {p * q}")
+        print(f"Verified: ✗ Failed (incorrect factors)")
+
+    print(f"Workers used: {used_workers}")
+    print(f"Curves attempted: ~{curves:,}")
+
+    avg_cpu = monitor.average_cpu()
+    peak_freq = monitor.peak_freq
+    peak_memory = max(before_memory, after_memory)
+
+    print("\n--- Performance Metrics ---")
+    print(f"Runtime: {runtime:.2f} seconds ({runtime/60:.2f} minutes)")
+    print(f"Average CPU Load: {avg_cpu:.2f}%")
+    print(f"Peak CPU Clock Speed: {peak_freq:.2f} MHz")
+    print(f"Peak RAM Usage: {peak_memory:.2f} MB")
+
+    if before_battery is not None and after_battery is not None:
+        consumption = before_battery - after_battery
+        print(f"Battery Before: {before_battery}%")
+        print(f"Battery After: {after_battery}%")
+        print(f"Battery Consumption: {consumption:.2f}%")
+
+    print("=" * 70)
+
+
+# ============================================================================
+# Main Runner
+# ============================================================================
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    algorithm_name = "ECM"
 
-    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 5 Resources"
+    # --- Setup Log Directory and File ---
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    algorithm_name = "ECM_AvgMetrics"
+
+    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 4 Resources\ECM_Logs"
     os.makedirs(save_dir, exist_ok=True)
     log_filename = os.path.join(save_dir, f"{algorithm_name}_{timestamp}.txt")
 
     sys.stdout = DualLogger(log_filename)
+
     print(f"Log started at {timestamp}")
     print(f"Output file: {log_filename}")
     print("=" * 70)
-    
-    #just need to define 5 semiprimes for testing
-    semiprimes = [
-        16124098885321590508906039,
-        99769848203679794790973289,
-        413382272494408950787512431,
-        1571660392463995502966917,
-        209497331386052445391
 
-    ]
-
-    print(f"Starting ECM Batch Benchmark ({len(semiprimes)} semiprimes)")
-    print("=" * 70)
-
-    run_batch(semiprimes, save_dir)
+    n = int(input("Enter a semiprime to factor using ECM: "))
+    benchmark_ecm_parallel(n, max_curves=4000, B1=100000, workers=None)
 
     sys.stdout.log.close()
     sys.stdout = sys.stdout.terminal
+
     print(f"\n✅ Output also saved to:\n{log_filename}")

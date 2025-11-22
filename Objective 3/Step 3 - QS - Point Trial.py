@@ -1,6 +1,6 @@
 """
-Quadratic Sieve Integer Factorization Algorithm (Batch Version)
-Includes: Performance Monitoring, Average CPU Load, Peak Clock Speed, and Throughput
+Quadratic Sieve Integer Factorization Algorithm
+A clean, optimized implementation with performance monitoring
 """
 
 import math
@@ -17,12 +17,12 @@ from math import isqrt
 from collections import defaultdict, namedtuple
 from typing import List, Tuple, Optional, Dict
 from concurrent.futures import ProcessPoolExecutor
-from multiprocessing import cpu_count
+from multiprocessing import Pool, cpu_count
 import numpy as np
 
-# =====================================================================
+# ============================================================================
 # Dual Output Logger (Console + File)
-# =====================================================================
+# ============================================================================
 
 class DualLogger:
     """Redirects print() output to both console and a log file."""
@@ -591,65 +591,6 @@ def select_parameters(bit_size: int) -> Tuple[int, int]:
     M = min(100000, bit_size * 800)
     return B, M
 
-# =====================================================================
-# System Monitoring
-# =====================================================================
-
-class SystemMonitor(threading.Thread):
-    """Tracks average CPU load and peak CPU clock speed."""
-    def __init__(self, interval=0.5):
-        super().__init__()
-        self.interval = interval
-        self.cpu_samples = []
-        self.peak_freq = 0.0
-        self._stop_event = threading.Event()
-
-    def run(self):
-        while not self._stop_event.is_set():
-            cpu_load = psutil.cpu_percent(interval=None)
-            freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0.0
-            self.cpu_samples.append(cpu_load)
-            self.peak_freq = max(self.peak_freq, freq)
-            time.sleep(self.interval)
-
-    def stop(self):
-        self._stop_event.set()
-
-    @property
-    def average_cpu(self):
-        return sum(self.cpu_samples) / len(self.cpu_samples) if self.cpu_samples else 0.0
-
-
-def system_metrics_before():
-    """Capture initial system metrics."""
-    battery = psutil.sensors_battery()
-    return {
-        "memory": psutil.virtual_memory().used / (1024 * 1024),
-        "battery": battery.percent if battery else None,
-        "charging": battery.power_plugged if battery else None,
-    }
-
-def system_metrics_after(before):
-    """Capture system metrics after benchmark."""
-    battery = psutil.sensors_battery()
-    after = {
-        "memory": psutil.virtual_memory().used / (1024 * 1024),
-        "battery": battery.percent if battery else None,
-        "charging": battery.power_plugged if battery else None,
-    }
-
-    battery_consumption = None
-    if before["battery"] is not None and after["battery"] is not None:
-        battery_consumption = before["battery"] - after["battery"]
-
-    return {
-        "peak_memory": max(before["memory"], after["memory"]),
-        "battery_before": before["battery"],
-        "battery_after": after["battery"],
-        "battery_consumption": battery_consumption,
-        "charging": after["charging"],
-    }
-
 
 def quadratic_sieve(N: int) -> Optional[Tuple[int, int]]:
     """
@@ -727,87 +668,165 @@ def quadratic_sieve(N: int) -> Optional[Tuple[int, int]]:
     print("    All dependencies failed to produce factors")
     return None
 
-# =====================================================================
-# Batch Runner
-# =====================================================================
+# ============================================================================
+# Metrics Helpers
+# ============================================================================
 
-def run_batch(semiprimes: List[int]):
-    """Runs QS on multiple semiprimes and reports overall metrics."""
-    print("=" * 70)
-    print(f"Starting Quadratic Sieve Batch Benchmark ({len(semiprimes)} semiprimes)")
-    print("=" * 70)
+class SystemMonitor(threading.Thread):
+    """Monitors average CPU load and peak CPU clock speed during execution."""
+    def __init__(self, interval=0.5):
+        super().__init__()
+        self.interval = interval
+        self.cpu_samples = []
+        self.peak_freq = 0.0
+        self._stop_event = threading.Event()
 
-    before = system_metrics_before()
-    if before["charging"]:
-        print("⚠️  Device is charging. Skipping benchmark to avoid interference.")
-        return
+    def run(self):
+        while not self._stop_event.is_set():
+            cpu_load = psutil.cpu_percent(interval=None)
+            freq = psutil.cpu_freq().current if psutil.cpu_freq() else 0.0
+            self.cpu_samples.append(cpu_load)
+            self.peak_freq = max(self.peak_freq, freq)
+            time.sleep(self.interval)
 
-    monitor = SystemMonitor(interval=0.5)
-    monitor.start()
+    def stop(self):
+        self._stop_event.set()
 
-    start_time = timeit.default_timer()
-    successes = 0
+    @property
+    def average_cpu(self):
+        return sum(self.cpu_samples) / len(self.cpu_samples) if self.cpu_samples else 0.0
 
-    for n in semiprimes:
-        print(f"\nFactoring {n}...")
+
+def system_metrics_before():
+    """Capture initial system metrics before benchmark."""
+    battery = psutil.sensors_battery()
+    return {
+        "memory": psutil.virtual_memory().used / (1024 * 1024),
+        "battery": battery.percent if battery else None,
+        "charging": battery.power_plugged if battery else None,
+    }
+
+
+def system_metrics_after(before):
+    """Capture final memory/battery usage after benchmark."""
+    battery = psutil.sensors_battery()
+    after = {
+        "memory": psutil.virtual_memory().used / (1024 * 1024),
+        "battery": battery.percent if battery else None,
+        "charging": battery.power_plugged if battery else None,
+    }
+
+    battery_consumption = None
+    if before["battery"] is not None and after["battery"] is not None:
+        battery_consumption = before["battery"] - after["battery"]
+
+    return {
+        "peak_memory": max(before["memory"], after["memory"]),
+        "battery_before": before["battery"],
+        "battery_after": after["battery"],
+        "battery_consumption": battery_consumption,
+        "charging": after["charging"],
+    }
+
+
+
+def main():
+    """Main entry point for the Quadratic Sieve factorization program."""
+    print("=" * 60)
+    print("QUADRATIC SIEVE INTEGER FACTORIZATION")
+    print("=" * 60)
+    
+    try:
+        # Get input
+        n = int(input("Enter the number to factor: "))
+        
+        if n <= 1:
+            print("Please enter a number greater than 1")
+            return
+        
+        before = system_metrics_before()
+        if before["charging"]:
+            print("⚠️  Device is charging. Skipping benchmark to avoid battery interference.")
+            return
+
+        # Start monitoring thread
+        monitor = SystemMonitor(interval=0.5)
+        monitor.start()
+
+        print("\n" + "=" * 60)
+        start_time = timeit.default_timer()
         result = quadratic_sieve(n)
-        if result and result[0] * result[1] == n:
-            print(f"✓ Success: {n} = {result[0]} × {result[1]}")
-            successes += 1
+        end_time = timeit.default_timer()
+        runtime = end_time - start_time
+
+        # Stop monitor and collect metrics
+        monitor.stop()
+        monitor.join()
+        metrics = system_metrics_after(before)
+
+
+        # Display results
+        print("\n" + "=" * 60)
+        print("RESULTS")
+        print("=" * 60)
+        print(f"Number (semi-prime): {n}")
+        print(f"Bit size: {n.bit_length()}")
+        
+        if result and isinstance(result, tuple) and len(result) == 2:
+            p, q = result
+            if p * q == n:
+                print(f"Result: {n} = {p} × {q}")
+                print(f"Verified: ✓ Success")
+            else:
+                print(f"Result: {p} × {q} = {p * q}")
+                print(f"Verified: ✗ Failed (incorrect factors)")
         else:
-            print(f"✗ Failed on {n}")
+            print(f"Result: No factors found")
+            print(f"Verified: ✗ Failed")
+        
+        print(f"Runtime: {runtime:.2f} seconds ({runtime/60:.2f} minutes)")
+        print("\n--- Performance Metrics ---")
+        print(f"Average CPU Load: {monitor.average_cpu:.2f}%")
+        print(f"Peak RAM Usage: {metrics['peak_memory']:.2f} MB")
+        print(f"Peak CPU Clock Speed: {monitor.peak_freq:.2f} MHz")
 
-    total_runtime = timeit.default_timer() - start_time
-
-    monitor.stop()
-    monitor.join()
-
-    after = system_metrics_after(before)
-
-    print("\n" + "=" * 70)
-    print("Batch Summary")
-    print("=" * 70)
-    print(f"Total Semiprimes Tested: {len(semiprimes)}")
-    print(f"Successful Runs: {successes}/{len(semiprimes)}")
-    print(f"Success Rate: {(successes / len(semiprimes)) * 100:.2f}%")
-    print("\n--- Performance Metrics ---")
-    print(f"Total Runtime: {total_runtime:.2f} seconds ({total_runtime/60:.2f} minutes)")
-    print(f"Throughput: {successes / total_runtime:.4f} successful factorizations/second")
-    print(f"Average CPU Load: {monitor.average_cpu:.2f}%")
-    print(f"Peak RAM Usage: {after['peak_memory']:.2f} MB")
-    print(f"Peak CPU Clock Speed: {monitor.peak_freq:.2f} MHz")
-    if after["battery_before"] is not None:
-        print(f"Battery Before: {after['battery_before']}%")
-        print(f"Battery After: {after['battery_after']}%")
-        print(f"Battery Consumption: {after['battery_consumption']:.2f}%")
-    print("=" * 70)
-
-# =====================================================================
-# Main Entry
-# =====================================================================
+        if metrics["battery_before"] is not None:
+            print(f"Battery Before: {metrics['battery_before']}%")
+            print(f"Battery After: {metrics['battery_after']}%")
+            print(f"Battery Consumption: {metrics['battery_consumption']:.2f}%" if metrics["battery_consumption"] is not None else "Battery Consumption: n/a")
+        print("=" * 60)
+        
+    except ValueError:
+        print("Please enter a valid integer")
+    except KeyboardInterrupt:
+        print("\nFactorization interrupted")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
 
+    # --- Setup Log Directory and File ---
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    algorithm_name = "QS_Batch"
-    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 5 Resources"
+    algorithm_name = "QS"
+
+    # ✅ Change this to where you want logs saved
+    save_dir = r"C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 4 Resources\QS_Logs"
+
     os.makedirs(save_dir, exist_ok=True)
     log_filename = os.path.join(save_dir, f"{algorithm_name}_{timestamp}.txt")
 
+    # Start dual logging
     sys.stdout = DualLogger(log_filename)
+
     print(f"Log started at {timestamp}")
     print(f"Output file: {log_filename}")
-    print("=" * 70)
 
-    semiprimes = [
-        207073211425765647323701979,
-        2405668863350329627101536027,
-        413382272494408950787512431
-    ]
+    main()
 
-    run_batch(semiprimes)
-
+    # --- Restore Normal Output ---
     sys.stdout.log.close()
     sys.stdout = sys.stdout.terminal
+
     print(f"\n✅ Output also saved to:\n{log_filename}")

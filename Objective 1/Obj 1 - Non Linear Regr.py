@@ -8,13 +8,10 @@ import os # <--- REQUIRED to find files correctly
 
 # --- 1. Define Theoretical Regression Functions ---
 
-def func_power_law(x, a, b):
-    """
-    Theoretical Model for Pollard's Rho (O(sqrt(p)) which scales to N^(1/4)).
-    Model: y = a * x^b
-    """
-    x = np.array(x, dtype=np.float64)
-    return a * np.power(x, b)
+def func_exponential(x, a, b):
+    # This models y = a * e^(b * x)
+    # This matches the form 2^(0.25x) derived above
+    return a * np.exp(b * x)
 
 def func_sub_exponential(x, a, c):
     """
@@ -104,14 +101,21 @@ def run_regression_and_plot(name, func, x_data, y_data, plot_style='r-'):
         
     try:
         # Initial guesses help the solver converge
-        if func.__name__ == "func_power_law":
-            initial_guess = [1.0, 4.0] # Guess for a, b
+        if func.__name__ == "func_exponential":
+            # UPDATED GUESS: a=small, b approx 0.17
+            initial_guess = [1e-6, 0.17] 
+            # Optional: Add bounds to force positive parameters if needed
+            # bounds = ([0, 0], [np.inf, np.inf]) 
+            # popt, pcov = curve_fit(func, x_data, y_data, p0=initial_guess, bounds=bounds, maxfev=10000)
         else:
             initial_guess = [0.001, 1.0] # Guess for a, c
             
         # Use curve_fit to find the best parameters
-        popt, pcov = curve_fit(func, x_data, y_data, p0=initial_guess, maxfev=10000)
+        # You can try adding bounds if the simple guess update doesn't work alone:
+        # popt, pcov = curve_fit(func, x_data, y_data, p0=initial_guess, maxfev=10000)
         
+        # Let's stick to the standard call first with better guesses:
+        popt, pcov = curve_fit(func, x_data, y_data, p0=initial_guess, maxfev=10000)
         # Predict Y values using the fitted model
         y_pred = func(x_data, *popt)
         
@@ -181,7 +185,7 @@ def run_regression_and_plot(name, func, x_data, y_data, plot_style='r-'):
 # --- 4. Main Execution and Plotting ---
 
 r2_pr, params_pr, p_values_pr = run_regression_and_plot(
-    "Pollard's Rho", func_power_law, pr_bits, pr_runtime_mean, 'g-'
+    "Pollard's Rho", func_exponential, pr_bits, pr_runtime_mean, 'g-'
 )
 
 r2_ecm, params_ecm, p_values_ecm = run_regression_and_plot(
@@ -201,11 +205,11 @@ print("| Algorithm | Model | R-squared (R^2) | Scaling Param (p-value) | H1 (p<0
 print("|---|---|---|---|---|---|")
 
 if r2_pr is not None and p_values_pr is not None:
-    param_name = func_power_law.__code__.co_varnames[2] # 'b'
+    param_name = func_exponential.__code__.co_varnames[2] # 'b'
     p_val_str = f"{p_values_pr[1]:.4e}"
     h1_accepted = "Accepted" if p_values_pr[1] < 0.05 else "Rejected"
     success = "PASSED" if (p_values_pr[1] < 0.05 and r2_pr >= 0.95) else "FAILED"
-    print(f"| Pollard's Rho | Power Law ('{param_name}') | {r2_pr:.4f} | {p_val_str} | {h1_accepted} | {success} |")
+    print(f"| Pollard's Rho | Exponential Law ('{param_name}') | {r2_pr:.4f} | {p_val_str} | {h1_accepted} | {success} |")
 
 if r2_ecm is not None and p_values_ecm is not None:
     param_name = func_sub_exponential.__code__.co_varnames[2] # 'c'

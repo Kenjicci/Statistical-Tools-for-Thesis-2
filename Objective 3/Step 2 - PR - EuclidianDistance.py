@@ -78,7 +78,7 @@ try:
 except NameError:
     script_dir = os.getcwd()
 
-input_file = os.path.join(script_dir, 'Step 2 Resources/PR_raw_metrics_scaled.csv')
+input_file = os.path.join(script_dir, 'Step 2 Resources/PR_scaled_metrics.csv')
 output_file_best = os.path.join(script_dir, 'Step 3 Resources/PR_specific_matches.csv') # The Summary
 output_file_all = os.path.join(script_dir, 'Step 3 Resources/PR_all_distances.csv')     # The Full Table
 

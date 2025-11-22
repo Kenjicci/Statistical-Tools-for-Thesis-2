@@ -1,0 +1,18 @@
+Log started at 2025-11-20_03-20-12
+Output file: C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 4 Resources\PR_Logs\PollardsRho_AvgMetrics_2025-11-20_03-20-12.txt
+======================================================================
+Enter a semiprime to factor: Factoring 656002910339734495348411 using Pollard's Rho
+Bit length: 80 bits
+============================================================
+Result: 656002910339734495348411 = 608190391643 × 1078614393377
+Verified: ✓ Success
+
+--- Performance Metrics ---
+Runtime: 3.07 seconds (0.05 minutes)
+Average CPU Load: 12.47%
+Peak CPU Clock Speed: 1893.00 MHz
+Peak RAM Usage: 5303.49 MB
+Battery Before: 48%
+Battery After: 48%
+Battery Consumption: 0.00%
+============================================================

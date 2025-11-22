@@ -1,0 +1,36 @@
+Log started at 2025-11-20_04-03-47
+Output file: C:\Users\acer\Desktop\Non-Linear-Regression-of-PR-QS-ECM\Objective 3\Step 4 Resources\QS_Logs\QS_2025-11-20_04-03-47.txt
+============================================================
+QUADRATIC SIEVE INTEGER FACTORIZATION
+============================================================
+Enter the number to factor: 
+============================================================
+Factoring 768994126799 (40 bits)
+    Using factor base bound B = 1000, sieve range M = 3000
+    Factor base size: 93
+    Target relations: 150
+    Sieving incrementally (max 150 relations, 11 workers)
+    Progress: collected 150 relations
+    Found 150 smooth relations
+    Creating 150×93 matrix
+    Found 61 dependencies
+    Trying dependency 1/61
+    Found factor using dependency 1
+
+============================================================
+RESULTS
+============================================================
+Number (semi-prime): 768994126799
+Bit size: 40
+Result: 768994126799 = 796531 × 965429
+Verified: ✓ Success
+Runtime: 2.64 seconds (0.04 minutes)
+
+--- Performance Metrics ---
+Average CPU Load: 60.65%
+Peak RAM Usage: 5178.17 MB
+Peak CPU Clock Speed: 1893.00 MHz
+Battery Before: 61%
+Battery After: 61%
+Battery Consumption: 0.00%
+============================================================

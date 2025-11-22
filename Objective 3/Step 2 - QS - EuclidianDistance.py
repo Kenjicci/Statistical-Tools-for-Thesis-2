@@ -78,9 +78,9 @@ try:
 except NameError:
     script_dir = os.getcwd()
 
-input_file = os.path.join(script_dir, 'QS_raw_metrics_scaled.csv')
-output_file_best = os.path.join(script_dir, 'QS_specific_matches.csv') # The Summary
-output_file_all = os.path.join(script_dir, 'QS_all_distances.csv')     # The Full Table
+input_file = os.path.join(script_dir, 'Step 2 Resources/QS_scaled_metrics.csv')
+output_file_best = os.path.join(script_dir, 'Step 3 Resources/QS_specific_matches.csv') # The Summary
+output_file_all = os.path.join(script_dir, 'Step 3 Resources/QS_all_distances.csv')     # The Full Table
 
 # 2. Load Data
 try:
