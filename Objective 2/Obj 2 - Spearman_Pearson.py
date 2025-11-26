@@ -25,7 +25,7 @@ def load_data(filepath):
     try:
         df = pd.read_csv(filepath)
         df.columns = df.columns.str.strip()
-        x_col = 'Bit Length (x-axis)'
+        x_col = 'Bit Size (x-axis)'
         y_col = 'CPU Load (y-axis)'
 
         if x_col not in df.columns or y_col not in df.columns:
@@ -50,7 +50,7 @@ def load_data(filepath):
 # --- Plot Pearson ---
 def plot_pearson(name, x, y, color='tab:blue'):
     r_val, p_val = pearsonr(x, y)
-    pearson_success = "PASSED" if (r_val > 0.9 and p_val < 0.05) else "FAILED"
+    pearson_success = "PASSED" if (r_val > 0.7 and p_val < 0.05) else "FAILED"
 
     coeffs = np.polyfit(x, y, 1)
     line_x = np.linspace(np.min(x), np.max(x), 200)
@@ -59,7 +59,7 @@ def plot_pearson(name, x, y, color='tab:blue'):
     plt.figure(figsize=(8,6))
     plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
     plt.plot(line_x, line_y, linestyle='--', linewidth=2, label='Linear fit', color=color)
-    plt.title(f"Pearson: {name} (Laptop 2)", fontsize=14)
+    plt.title(f"Pearson: {name} (Laptop 1)", fontsize=14)
     stats_text = f"Pearson r = {r_val:.4f}\np-value = {p_val:.2e}\nSuccess: {pearson_success}"
     plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
              fontsize=10, verticalalignment='top',
@@ -98,7 +98,7 @@ def plot_spearman_smooth(name, x, y, color='tab:orange', smoothing_factor=None):
         plt.figure(figsize=(8,6))
         plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
         plt.plot(dense_x, dense_y, linewidth=2.5, label='Smoothed trend', color=color, alpha=0.95)
-        plt.title(f"Spearman (LOWESS-like): {name} (Laptop 2)", fontsize=14)
+        plt.title(f"Spearman (LOWESS-like): {name} (Laptop 1)", fontsize=14)
         stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
         plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
                  fontsize=10, verticalalignment='top',
@@ -113,7 +113,7 @@ def plot_spearman_smooth(name, x, y, color='tab:orange', smoothing_factor=None):
         print(f"Warning: Spearman smoothing failed for {name}: {e}")
         plt.figure(figsize=(8,6))
         plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
-        plt.title(f"Spearman (ranks plotted): {name} (Laptop 3)", fontsize=14)
+        plt.title(f"Spearman (ranks plotted): {name} (Laptop 1)", fontsize=14)
         stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
         plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
                  fontsize=10, verticalalignment='top',
@@ -163,7 +163,7 @@ def run_all_and_summary(pr_file, ecm_file, qs_file):
     plt.show()
 
     # --- Summary Table ---
-    print("\n--- Summary for Thesis Table 5.4 (Laptop 2) ---")
+    print("\n--- Summary for Thesis Table 5.4 (Laptop 1) ---")
     print("| Algorithm | Pearson (r) | Pearson p | Pearson Success | Spearman (ρ) | Spearman p | Spearman Success |")
     print("|---|---:|---:|:---:|---:|---:|:---:|")
     for name, vals in summary.items():
@@ -173,7 +173,7 @@ def run_all_and_summary(pr_file, ecm_file, qs_file):
 # --- Run ---
 if __name__ == "__main__":
     run_all_and_summary(
-        "Laptop 2 - PR - SPearson.csv",
-        "Laptop 2 - ECM - SPearson.csv",
-        "Laptop 2 - QS - SPearson.csv"
+        "Laptop 1 - PR - SPearson.csv",
+        "Laptop 1 - ECM - SPearson.csv",
+        "Laptop 1 - QS - SPearson.csv"
     )

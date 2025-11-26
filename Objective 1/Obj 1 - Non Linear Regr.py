@@ -8,33 +8,35 @@ import os # <--- REQUIRED to find files correctly
 
 # --- 1. Define Theoretical Regression Functions ---
 
-def func_exponential(x, a, b):
-    # This models y = a * e^(b * x)
-    # This matches the form 2^(0.25x) derived above
-    return a * np.exp(b * x)
-
-def func_sub_exponential(x, a, c):
+def model_pollards_rho(x, a, b):
     """
-    Theoretical Model for ECM/QS (Simplified L-Notation, L_n[1/2, c]).
-    Model: y = a * exp(c * sqrt(ln(x) * ln(ln(x))))
+    True complexity: O(sqrt(p))
+    Convert n-bit -> p-bit = x/2
+    Model: y = a * 2^(b * (x/2))
     """
-    x = np.array(x, dtype=np.float64)
-    # Ensure x > e for log(log(x)) to be defined and real.
-    log_x = np.log(x)
-    
-    # Handle potential issues with small numbers or negative logs
-    if np.any(log_x <= 0):
-         # If log_x is negative or zero, we return a large number or handle gracefully
-         # For fitting, we usually mask these, but here we will just let numpy warn
-         pass
 
-    log_log_x = np.log(log_x)
-    
-    if np.any(np.isnan(log_log_x)):
-        # This might happen if x is too small, but for crypto bit lengths it should be fine
-        pass 
-        
-    return a * np.exp(c * np.sqrt(log_x * log_log_x))
+    p_bits = x/2
+    return a * np.exp(b * np.log(2) * p_bits)
+
+
+def model_ecm(x, a, c):
+    """
+    Convert n-bit -> p-bit = x/2
+    Model: y = a * exp(c * sqrt (ln(p) * ln(ln(p))))
+    """
+
+    p_bits = x / 2
+    ln_p = p_bits * np.log(2)
+    return a * np.exp(c * np.sqrt(ln_p * np.log(ln_p)))
+
+def model_qs(x, a, c):
+    """
+    Already use n-bit size
+    Model: y = a * exp(c * sqrt(ln(n) * ln(ln(n))))
+    """
+
+    ln_n = x * np.log(2)
+    return a * np.exp(c * np.sqrt(ln_n * np.log(ln_n)))
 
 def calculate_r_squared(y_true, y_pred):
     """Calculates the R-squared (Goodness-of-Fit) value."""
@@ -51,7 +53,7 @@ def load_data(filepath):
         df = pd.read_csv(filepath)
         df.columns = df.columns.str.strip()
         
-        x_col = 'Bit Length (x-axis)'
+        x_col = 'Bit Size (x-axis)'
         y_col = 'Mean Runtime (y-axis)'
 
         if x_col not in df.columns or y_col not in df.columns:
@@ -80,7 +82,6 @@ print("Loading data from CSV files...")
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Define the full paths to the files
-# CHECK: Ensure these filenames match your actual files (e.g., Laptop 2 vs Laptop 3)
 file_pr = os.path.join(script_dir, "Laptop 2 - PR - Non Linear Data.csv")
 file_ecm = os.path.join(script_dir, "Laptop 2 - ECM - Non Linear Data.csv")
 file_qs = os.path.join(script_dir, "Laptop 2 - QS - Non Linear Data.csv")
@@ -101,7 +102,7 @@ def run_regression_and_plot(name, func, x_data, y_data, plot_style='r-'):
         
     try:
         # Initial guesses help the solver converge
-        if func.__name__ == "func_exponential":
+        if func.__name__ == "model_pollards_rho":
             # UPDATED GUESS: a=small, b approx 0.17
             initial_guess = [1e-6, 0.17] 
             # Optional: Add bounds to force positive parameters if needed
@@ -185,15 +186,15 @@ def run_regression_and_plot(name, func, x_data, y_data, plot_style='r-'):
 # --- 4. Main Execution and Plotting ---
 
 r2_pr, params_pr, p_values_pr = run_regression_and_plot(
-    "Pollard's Rho", func_exponential, pr_bits, pr_runtime_mean, 'g-'
+    "Pollard's Rho", model_pollards_rho, pr_bits, pr_runtime_mean, 'g-'
 )
 
 r2_ecm, params_ecm, p_values_ecm = run_regression_and_plot(
-    "ECM", func_sub_exponential, ecm_bits, ecm_runtime_mean, 'b-'
+    "ECM", model_ecm, ecm_bits, ecm_runtime_mean, 'b-'
 )
 
 r2_qs, params_qs, p_values_qs = run_regression_and_plot(
-    "Quadratic Sieve", func_sub_exponential, qs_bits, qs_runtime_mean, 'r-'
+    "Quadratic Sieve", model_qs, qs_bits, qs_runtime_mean, 'r-'
 )
 
 # Display all plots
@@ -205,21 +206,21 @@ print("| Algorithm | Model | R-squared (R^2) | Scaling Param (p-value) | H1 (p<0
 print("|---|---|---|---|---|---|")
 
 if r2_pr is not None and p_values_pr is not None:
-    param_name = func_exponential.__code__.co_varnames[2] # 'b'
+    param_name = model_pollards_rho.__code__.co_varnames[2] # 'b'
     p_val_str = f"{p_values_pr[1]:.4e}"
     h1_accepted = "Accepted" if p_values_pr[1] < 0.05 else "Rejected"
     success = "PASSED" if (p_values_pr[1] < 0.05 and r2_pr >= 0.95) else "FAILED"
     print(f"| Pollard's Rho | Exponential Law ('{param_name}') | {r2_pr:.4f} | {p_val_str} | {h1_accepted} | {success} |")
 
 if r2_ecm is not None and p_values_ecm is not None:
-    param_name = func_sub_exponential.__code__.co_varnames[2] # 'c'
+    param_name = model_ecm.__code__.co_varnames[2] # 'c'
     p_val_str = f"{p_values_ecm[1]:.4e}"
     h1_accepted = "Accepted" if p_values_ecm[1] < 0.05 else "Rejected"
     success = "PASSED" if (p_values_ecm[1] < 0.05 and r2_ecm >= 0.95) else "FAILED"
     print(f"| ECM | L-Notation ('{param_name}') | {r2_ecm:.4f} | {p_val_str} | {h1_accepted} | {success} |")
 
 if r2_qs is not None and p_values_qs is not None:
-    param_name = func_sub_exponential.__code__.co_varnames[2] # 'c'
+    param_name = model_qs.__code__.co_varnames[2] # 'c'
     p_val_str = f"{p_values_qs[1]:.4e}"
     h1_accepted = "Accepted" if p_values_qs[1] < 0.05 else "Rejected"
     success = "PASSED" if (p_values_qs[1] < 0.05 and r2_qs >= 0.95) else "FAILED"
