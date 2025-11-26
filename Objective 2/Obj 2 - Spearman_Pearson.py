@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr, spearmanr, rankdata
+from statsmodels.nonparametric.smoothers_lowess import lowess
 from scipy.interpolate import UnivariateSpline
 import os # <--- IMPORTED OS MODULE HERE
 import sys # Added for clean exit on FileNotFoundError
@@ -59,7 +60,7 @@ def plot_pearson(name, x, y, color='tab:blue'):
     plt.figure(figsize=(8,6))
     plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
     plt.plot(line_x, line_y, linestyle='--', linewidth=2, label='Linear fit', color=color)
-    plt.title(f"Pearson: {name} (Laptop 1)", fontsize=14)
+    plt.title(f"Pearson: {name} (Laptop 2)", fontsize=14)
     stats_text = f"Pearson r = {r_val:.4f}\np-value = {p_val:.2e}\nSuccess: {pearson_success}"
     plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
              fontsize=10, verticalalignment='top',
@@ -73,58 +74,42 @@ def plot_pearson(name, x, y, color='tab:blue'):
     return r_val, p_val, pearson_success
 
 # --- Plot Spearman ---
-def plot_spearman_smooth(name, x, y, color='tab:orange', smoothing_factor=None):
+def plot_spearman_smooth(name, x, y, color='tab:orange', frac=0.6):
+    # --- Spearman correlation ---
     rho_val, rho_p = spearmanr(x, y)
     spearman_success = "PASSED" if (rho_val > 0.9 and rho_p < 0.05) else "FAILED"
 
-    x_rank = rankdata(x)
-    y_rank = rankdata(y)
+    # --- Sort by X ---
     sort_idx = np.argsort(x)
     x_sorted = x[sort_idx]
-    xrank_sorted = x_rank[sort_idx]
-    yrank_sorted = y_rank[sort_idx]
     y_sorted = y[sort_idx]
 
-    if smoothing_factor is None:
-        smoothing_factor = max(1.0, len(x) * 0.5)
+    # --- LOWESS smoothing (never fails) ---
+    smooth = lowess(y_sorted, x_sorted, frac=frac, return_sorted=True)
+    smooth_x = smooth[:,0]
+    smooth_y = smooth[:,1]
 
-    try:
-        spline = UnivariateSpline(xrank_sorted, yrank_sorted, s=smoothing_factor)
-        dense_xrank = np.linspace(np.min(xrank_sorted), np.max(xrank_sorted), 400)
-        dense_yrank = spline(dense_xrank)
-        dense_x = np.interp(dense_xrank, xrank_sorted, x_sorted)
-        dense_y = np.interp(dense_yrank, yrank_sorted, y_sorted)
+    # --- Plot ---
+    plt.figure(figsize=(8,6))
+    plt.scatter(x_sorted, y_sorted, s=70, label='Data points', color=color, alpha=0.9)
+    plt.plot(smooth_x, smooth_y, linewidth=2.5, color=color, label='LOWESS trend')
 
-        plt.figure(figsize=(8,6))
-        plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
-        plt.plot(dense_x, dense_y, linewidth=2.5, label='Smoothed trend', color=color, alpha=0.95)
-        plt.title(f"Spearman (LOWESS-like): {name} (Laptop 1)", fontsize=14)
-        stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
-        plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
-                 fontsize=10, verticalalignment='top',
-                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
-        plt.xlabel('Semiprime Bit Length (Input Size)')
-        plt.ylabel('CPU Load (%)')
-        plt.grid(True, linestyle='--', alpha=0.5)
-        plt.legend(loc='lower right')
-        plt.tight_layout()
+    plt.title(f"Spearman (LOWESS): {name} (Laptop 2)", fontsize=14)
+    stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
 
-    except Exception as e:
-        print(f"Warning: Spearman smoothing failed for {name}: {e}")
-        plt.figure(figsize=(8,6))
-        plt.scatter(x, y, s=70, label='Data points', color=color, alpha=0.9)
-        plt.title(f"Spearman (ranks plotted): {name} (Laptop 1)", fontsize=14)
-        stats_text = f"Spearman ρ = {rho_val:.4f}\np-value = {rho_p:.2e}\nSuccess: {spearman_success}"
-        plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
-                 fontsize=10, verticalalignment='top',
-                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
-        plt.xlabel('Semiprime Bit Length (Input Size)')
-        plt.ylabel('CPU Load (%)')
-        plt.grid(True, linestyle='--', alpha=0.5)
-        plt.legend(loc='lower right')
-        plt.tight_layout()
+    plt.text(0.05, 0.95, stats_text, transform=plt.gca().transAxes,
+             fontsize=10, verticalalignment='top',
+             bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
+
+    plt.xlabel('Semiprime Bit Length (Input Size)')
+    plt.ylabel('CPU Load (%)')
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.legend(loc='lower right')
+    plt.tight_layout()
 
     return rho_val, rho_p, spearman_success
+
+
 
 # --- Main execution ---
 def run_all_and_summary(pr_file, ecm_file, qs_file):
@@ -163,7 +148,7 @@ def run_all_and_summary(pr_file, ecm_file, qs_file):
     plt.show()
 
     # --- Summary Table ---
-    print("\n--- Summary for Thesis Table 5.4 (Laptop 1) ---")
+    print("\n--- Summary for Thesis Table 5.4 (Laptop 2) ---")
     print("| Algorithm | Pearson (r) | Pearson p | Pearson Success | Spearman (ρ) | Spearman p | Spearman Success |")
     print("|---|---:|---:|:---:|---:|---:|:---:|")
     for name, vals in summary.items():
@@ -173,7 +158,7 @@ def run_all_and_summary(pr_file, ecm_file, qs_file):
 # --- Run ---
 if __name__ == "__main__":
     run_all_and_summary(
-        "Laptop 1 - PR - SPearson.csv",
-        "Laptop 1 - ECM - SPearson.csv",
-        "Laptop 1 - QS - SPearson.csv"
+        "Laptop 2 - PR - SPearson.csv",
+        "Laptop 2 - ECM - SPearson.csv",
+        "Laptop 2 - QS - SPearson.csv"
     )
